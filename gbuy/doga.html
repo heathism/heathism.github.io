@@ -552,7 +552,7 @@
           }
 
           // 2. 計算「其他團員」的累計金額 (排除當前使用者，避免重複加算)
-          othersTotals = { NORMAL: 0, COLD: 0 };
+          othersTotals = { NORMAL: 0, COLD: 0, FROZEN: 0 };
           const allOrders = result.allOrders || [];
           allOrders.forEach(item => {
             if (item.userId !== userId) {
