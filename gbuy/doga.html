@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小團登記</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; background-color: #f4f6f8; color: #333; margin: 0; }
+    a { text-decoration: none; color: #409eff; }
+    .remark { color: #ff3860; }
+    
+    .profile { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; background: white; padding: 12px 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .profile img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+    
+    .gbuy-store { background: #e0e7ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 14px; margin-bottom: 20px; }
+    .gbuy-store h4 { margin: 0; color: #4f46e5; font-size: 1.2em; }
+    .gbuy-store a { text-decoration: none; color: #4f46e5; }
+    
+    /* 免運門檻計算卡片 */
+    .shipping-summary { background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 12px; padding: 14px; margin-bottom: 20px; }
+    .shipping-summary h4 { margin: 0 0 1em 0; color: #2e7d32; font-size: 1.2em; }
+    .shipping-item { font-size: 1em; margin-bottom: 8px; display: flex; flex-direction: column; gap: 2px; }
+    .shipping-row { display: flex; justify-content: space-between; align-items: center; }
+    .badge-free { color: #2e7d32; font-weight: bold; }
+    .badge-need { color: #d32f2f; font-weight: bold; }
+
+    .section-title { font-size: 1.2em; font-weight: bold; margin: 24px 0 12px 0; padding-left: 8px; border-left: 4px solid #06c755; color: #222; }
+    
+    .product-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .product-img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; background-color: #e9ecef; }
+    
+    .form-group { margin-top: 12px; }
+    label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 6px; color: #555; }
+    
+    .qty-control { display: flex; align-items: center; gap: 8px; width: 100%; }
+    .qty-btn { width: 44px; height: 44px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 8px; font-size: 20px; font-weight: bold; cursor: pointer; }
+    .qty-input { flex: 1; height: 44px; text-align: center; font-size: 18px; font-weight: bold; border: 1px solid #ccc; border-radius: 8px; }
+
+    input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+    
+    .submit-btn { width: 100%; padding: 14px; background-color: #06c755; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+    .submit-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+    #status { margin-top: 16px; text-align: center; font-weight: bold; color: #06c755; font-size: 14px; }
+
+    .all-orders-card { background: white; border-radius: 12px; padding: 16px; margin-top: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .order-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+    .order-table th, .order-table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+    .order-table th { background-color: #f8f9fa; color: #666; }
+  </style>
+</head>
+<body>
+
+  <!-- 使用者資訊 -->
+  <div class="profile">
+    <img id="user-avatar" src="https://via.placeholder.com/48" alt="Avatar">
+    <div>
+      <div id="user-name" style="font-weight: bold; font-size: 16px;">載入使用者資料中...</div>
+      <div style="font-size: 1em; color: #666;">小團登記</div>
+    </div>
+  </div>
+  
+  <div class="gbuy-store">
+    <h4><a href="https://www.doga.com.tw/" target="_blank">杜甲官網</a></h4>
+  </div>
+
+  <!-- 全團免運即時計算區 -->
+  <div class="shipping-summary">
+    <h4>🚚 全團免運即時計算</h4>
+    
+    <div class="shipping-item">
+      <div class="shipping-row">
+        <span>📦 常溫全團總額：<b id="normal-total">NT$ 0</b></span>
+        <span id="normal-status" class="badge-need">載入門檻中...</span>
+      </div>
+    </div>
+
+    <hr style="border: 0; border-top: 1px dashed #c8e6c9; margin: 6px 0;">
+
+    <div class="shipping-item">
+      <div class="shipping-row">
+        <span>❄️ 冷藏全團總額：<b id="cold-total">NT$ 0</b></span>
+        <span id="cold-status" class="badge-need">載入門檻中...</span>
+      </div>
+    </div>
+    
+    <hr style="border: 0; border-top: 1px dashed #c8e6c9; margin: 6px 0;">
+
+    <div class="shipping-item">
+      <div class="shipping-row">
+        <span>🧊 冷凍全團總額：<b id="frozen-total">NT$ 0</b></span>
+        <span id="frozen-status" class="badge-need">載入門檻中...</span>
+      </div>
+    </div>
+  </div>
+  
+  <form id="order-form">
+    
+    <!-- 常溫商品 -->
+    <div class="section-title">📦 常溫商品區</div>
+
+    <div class="product-card" data-category="常溫" data-product="香酥脆椒-墨西哥椒" data-price="167">
+      <img src="doga/639246319416100000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">香酥脆椒★墨西哥椒 100g</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 167</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/12068472" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+
+    <div class="product-card" data-category="常溫" data-product="香酥脆椒-川辣椒麻" data-price="167">
+      <img src="doga/639246319548370000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">香酥脆椒★川辣椒麻 100g</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 167</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/12068470" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+    
+    <div class="product-card" data-category="常溫" data-product="香酥脆椒-檸檬椒鹽" data-price="167">
+      <img src="doga/639246319658100000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">香酥脆椒★檸檬椒鹽 100g</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 167</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/12068469" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+
+    <div class="product-card" data-category="常溫" data-product="香酥脆椒-香酥甘梅" data-price="167">
+      <img src="doga/639246319829570000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">香酥脆椒★香酥甘梅 100g</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 167</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/12068434" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+
+    <div class="product-card" data-category="常溫" data-product="香酥脆椒-泰式酸辣" data-price="167">
+      <img src="doga/639246320005200000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">香酥脆椒★泰式酸辣 100g</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 167</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/12068422" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+
+    <div class="product-card" data-category="常溫" data-product="香酥脆椒-茴香孜然" data-price="167">
+      <img src="doga/639246320167800000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">香酥脆椒★茴香孜然 100g</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 167</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/12068415" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+
+    <div class="product-card" data-category="常溫" data-product="香酥脆椒-嗆辣芥末" data-price="167">
+      <img src="doga/639246320344300000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">香酥脆椒★嗆辣芥末 100g</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 167</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/12068393" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+
+    <div class="product-card" data-category="常溫" data-product="香酥脆椒-香濃起士" data-price="167">
+      <img src="doga/639246320552630000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">香酥脆椒★香濃起士 100g</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 167</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/12068373" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+    
+    <div class="product-card" data-category="常溫" data-product="杜甲香麻醬" data-price="380">
+      <img src="doga/639165943710970000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">杜甲香麻醬 130g/罐</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 380</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/9369732" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+    
+    <div class="product-card" data-category="常溫" data-product="巴蜀蒜椒油" data-price="320">
+      <img src="doga/639235306644270000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">巴蜀蒜椒油 120g/罐</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 320</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/9369725" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+    
+    <div class="product-card" data-category="常溫" data-product="杜甲剝皮辣椒" data-price="220">
+      <img src="doga/639252310702530000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">杜甲剝皮辣椒 450g/罐</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 220</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/10393664" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+
+    <!-- 冷藏商品 -->
+    <div class="section-title">❄️ 冷藏商品區</div>
+
+    <div class="product-card" data-category="冷藏" data-product="杜甲剁椒醬" data-price="225">
+      <img src="doga/639223073378130000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">杜甲剁椒醬 200g/罐</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 225</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/9564829" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+    
+    <div class="product-card" data-category="冷藏" data-product="杜甲蕃椒醬" data-price="225">
+      <img src="doga/639223073487430000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">杜甲蕃椒醬 200g/罐</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 225</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/9564833" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+    
+    <!-- 3. 冷凍商品 -->
+    <div class="section-title">🧊 冷凍商品區</div>
+
+    <div class="product-card" data-category="冷凍" data-product="杜甲鵝油剁椒醬" data-price="300">
+      <img src="doga/639226432544070000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">杜甲鵝油剁椒醬 200g/罐</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 300</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/11784008" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+    
+    <div class="product-card" data-category="冷凍" data-product="杜甲鵝油青蔥醬" data-price="300">
+      <img src="doga/639223074231500000.jpg" alt="商品照片" class="product-img">
+      <h3 style="margin: 10px 0 4px 0;">杜甲鵝油青蔥醬 200g/罐</h3>
+      <p style="color: #e63946; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">NT$ 300</p>
+      <span><a href="https://www.doga.com.tw/SalePage/Index/11784000" target="_blank">官網介紹</a></span>
+      
+      <div class="form-group">
+        <label>數量</label>
+        <div class="qty-control">
+          <button type="button" class="qty-btn" onclick="adjustQty(this, -1)">-</button>
+          <input type="number" class="qty-input" min="0" value="0" readonly>
+          <button type="button" class="qty-btn" onclick="adjustQty(this, 1)">+</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <span class="remark">價格已套用官網折扣</span>
+      </div>
+    </div>
+
+    <button type="submit" id="submit-btn" class="submit-btn" disabled>載入中...</button>
+  </form>
+
+  <div id="status"></div>
+
+  <!-- 全體訂購核對區 -->
+  <div class="all-orders-card">
+    <h3 style="margin-top: 0;">📋 全體團購明細核對</h3>
+    <p style="font-size: 12px; color: #666;">所有人登記的品項與數量會公開在此處供大家對帳：</p>
+    <table class="order-table">
+      <thead>
+        <tr>
+          <th>訂購人</th>
+          <th>溫層</th>
+          <th>品項</th>
+          <th>數量</th>
+          <th>小計</th>
+        </tr>
+      </thead>
+      <tbody id="all-orders-body">
+        <tr><td colspan="5" style="text-align: center; color: #999;">資料載入中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const LIFF_ID = "2011816868-AwPRdvwT"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwu_6A7_v_H0Jl8xlfMtJ65tZGFf70mM3u-HBh7PbYoRY9pJ3e2FGd7u9KZb325ZR6L/exec"; 
+
+    let currentUser = { userId: "", displayName: "" };
+    let shippingLimits = { NORMAL: 1000, COLD: 1500, FROZEN: 2000 };
+    
+    // 儲存「其他團員」的已提交訂購總金額
+    let othersTotals = { NORMAL: 0, COLD: 0, FROZEN: 0 };
+
+    function adjustQty(btn, delta) {
+      const input = btn.parentElement.querySelector('.qty-input');
+      let val = parseInt(input.value, 10) || 0;
+      val = Math.max(0, val + delta);
+      input.value = val;
+      calculateTotals(); 
+    }
+
+    // 計算「全團總金額」 = 其他團員金額 + 當前使用者畫面選擇金額
+    function calculateTotals() {
+      let myNormalTotal = 0;
+      let myColdTotal = 0;
+      let myFrozenTotal = 0;
+
+      document.querySelectorAll('.product-card').forEach(card => {
+        const category = card.dataset.category;
+        const price = Number(card.dataset.price);
+        const qty = Number(card.querySelector('.qty-input').value) || 0;
+
+        if (category === '常溫') myNormalTotal += price * qty;
+        if (category === '冷藏') myColdTotal += price * qty;
+        if (category === '冷凍') myFrozenTotal += price * qty;
+      });
+
+      const groupNormalTotal = othersTotals.NORMAL + myNormalTotal;
+      const groupColdTotal = othersTotals.COLD + myColdTotal;
+      const groupFrozenTotal = othersTotals.FROZEN + myFrozenTotal;
+
+      document.getElementById('normal-total').innerText = `NT$ ${groupNormalTotal}`;
+      document.getElementById('cold-total').innerText = `NT$ ${groupColdTotal}`;
+      document.getElementById('frozen-total').innerText = `NT$ ${groupFrozenTotal}`;
+
+      // 常溫全團免運判定
+      const normalStatusElem = document.getElementById('normal-status');
+      if (groupNormalTotal >= shippingLimits.NORMAL) {
+        normalStatusElem.innerHTML = `<span class="badge-free">🎉 全團免運！(滿 $${shippingLimits.NORMAL})</span>`;
+      } else {
+        const diff = shippingLimits.NORMAL - groupNormalTotal;
+        normalStatusElem.innerHTML = `<span class="badge-need">全團還差 $${diff} 免運</span>`;
+      }
+
+      // 冷藏全團免運判定
+      const coldStatusElem = document.getElementById('cold-status');
+      if (groupColdTotal >= shippingLimits.COLD) {
+        coldStatusElem.innerHTML = `<span class="badge-free">🎉 全團免運！(滿 $${shippingLimits.COLD})</span>`;
+      } else {
+        const diff = shippingLimits.COLD - groupColdTotal;
+        coldStatusElem.innerHTML = `<span class="badge-need">全團還差 $${diff} 免運</span>`;
+      }
+      
+      // 3. 冷凍全團免運判定
+      const frozenStatusElem = document.getElementById('frozen-status');
+      if (groupFrozenTotal >= shippingLimits.FROZEN) {
+        frozenStatusElem.innerHTML = `<span class="badge-free">🎉 全團免運！(滿 $${shippingLimits.FROZEN})</span>`;
+      } else {
+        const diff = shippingLimits.FROZEN - groupFrozenTotal;
+        frozenStatusElem.innerHTML = `<span class="badge-need">全團還差 $${diff} 免運</span>`;
+      }
+    }
+
+    async function initLiff() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        
+        const profile = await liff.getProfile();
+        currentUser.userId = profile.userId;
+        currentUser.displayName = profile.displayName;
+
+        document.getElementById('user-name').innerText = profile.displayName;
+        if (profile.pictureUrl) {
+          document.getElementById('user-avatar').src = profile.pictureUrl;
+        }
+
+        await fetchOrdersData(profile.userId);
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = false;
+        btn.innerText = "確認送出 / 更新登記";
+      } catch (err) {
+        console.error("LIFF 初始化失敗", err);
+        document.getElementById('status').innerText = "LIFF 初始化失敗：" + err.message;
+      }
+    }
+
+    async function fetchOrdersData(userId) {
+      document.getElementById('status').innerText = "正在讀取紀錄與全團累積資訊...";
+      try {
+        const response = await fetch(`${GAS_URL}?action=getOrders&userId=${encodeURIComponent(userId)}`);
+        const result = await response.json();
+
+        if (result.status === 'success') {
+          if (result.thresholds) {
+            shippingLimits = result.thresholds;
+          }
+
+          // 1. 帶入當前使用者的個人舊紀錄
+          if (result.userOrders) {
+            document.querySelectorAll('.product-card').forEach(card => {
+              const prodName = card.dataset.product;
+              if (result.userOrders[prodName]) {
+                card.querySelector('.qty-input').value = result.userOrders[prodName].quantity;
+                card.querySelector('.note-input').value = result.userOrders[prodName].note || "";
+              }
+            });
+          }
+
+          // 2. 計算「其他團員」的累計金額 (排除當前使用者，避免重複加算)
+          othersTotals = { NORMAL: 0, COLD: 0 };
+          const allOrders = result.allOrders || [];
+          allOrders.forEach(item => {
+            if (item.userId !== userId) {
+              if (item.category === '常溫') othersTotals.NORMAL += item.subtotal;
+              if (item.category === '冷藏') othersTotals.COLD += item.subtotal;
+              if (item.category === '冷凍') othersTotals.FROZEN += item.subtotal;
+            }
+          });
+
+          // 3. 重新計算全團金額與免運門檻
+          calculateTotals();
+
+          // 4. 渲染全體團購公開核對表
+          renderAllOrdersTable(allOrders);
+
+          document.getElementById('status').innerText = "";
+        }
+      } catch (err) {
+        console.error("讀取失敗", err);
+        document.getElementById('status').innerText = "資料讀取失敗，請確認網路連線";
+      }
+    }
+
+    function renderAllOrdersTable(allOrders) {
+      const tbody = document.getElementById('all-orders-body');
+      if (allOrders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">目前尚無人登記</td></tr>';
+        return;
+      }
+
+      let html = '';
+      allOrders.forEach(item => {
+        html += `
+          <tr>
+            <td><b>${escapeHtml(item.userName)}</b></td>
+            <td>${escapeHtml(item.category)}</td>
+            <td>${escapeHtml(item.productName)}</td>
+            <td>${item.quantity}</td>
+            <td>$${item.subtotal}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      return text ? String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
+    }
+
+    document.getElementById('order-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.innerText = "資料處理中...";
+
+      const orders = [];
+      document.querySelectorAll('.product-card').forEach(card => {
+        const category = card.dataset.category;
+        const productName = card.dataset.product;
+        const price = Number(card.dataset.price);
+        const quantity = Number(card.querySelector('.qty-input').value);
+        const note = card.querySelector('.note-input').value;
+
+        orders.push({ category, productName, price, quantity, note });
+      });
+
+      const payload = {
+        userId: currentUser.userId,
+        userName: currentUser.displayName,
+        orders: orders
+      };
+
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        document.getElementById('status').innerText = "登記完成！正在更新全團資訊...";
+        
+        // 重新讀取與整理全團累積資料
+        await fetchOrdersData(currentUser.userId);
+
+        if (liff.isInClient()) {
+          setTimeout(() => liff.closeWindow(), 1500);
+        }
+      } catch (err) {
+        console.error("送出失敗", err);
+        document.getElementById('status').innerText = "送出失敗，請重試";
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "確認送出 / 更新登記";
+      }
+    });
+
+    window.onload = initLiff;
+  </script>
+</body>
+</html>
